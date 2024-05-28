@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  name     String?
+  email    String   @unique
+  password String
+  role     UserRole @default(WORKER)
+
+  // Other fields and relations
+  workingHours WorkingHour[]
+  alerts       Alert[]
+
+  voiceChannels VoiceChannel[]
+
+  reprCompanyId   String?
+  workerCompanyId String?
+
+  representativeOf Company? @relation("representative")
+  workerOf         Company? @relation("workers", fields: [workerCompanyId], references: [id])
+
+  @@map("users")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  name String
+
+  machines Machine[]
+
+  representative User   @relation("representative", fields: [representativeId], references: [id])
+  workers        User[] @relation("workers")
+
+  workingHours  WorkingHour[]
+  voiceChannels VoiceChannel[]
+
+  representativeId String @unique
+
+  factoryPlan Bytes?
+
+  @@map("company")
+}
+
+model Machine {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name   String
+  dockIp String
+
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String
+
+  positionX Int?
+  positionY Int?
+
+  alerts Alert[]
+
+  @@map("machines")
+}
+
+model VoiceChannel {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String
+
+  users User[]
+
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String
+
+  @@map("voice_channels")
+}
+
+model WorkingHour {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String
+
+  dayOfWeek DayOfWeek
+  from      String
+  until     String
+
+  users User[]
+
+  company   Company @relation(fields: [companyId], references: [id])
+  companyId String
+
+  @@map("working_hours")
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name               String
+  avgMaintenanceTime Int?
+  currentStatus      AlertStatus
+
+  responsibleUser   User?   @relation(fields: [responsibleUserId], references: [id])
+  responsibleUserId String?
+
+  machine   Machine @relation(fields: [machineId], references: [id])
+  machineId String
+
+  @@map("alerts")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  WORKER
+}
+
+enum MachineStatus {
+  PENDING_CONNECTION
+  WORKING
+  ALERT
+}
+
+enum AlertStatus {
+  PENDING
+  TAKEN
+  SOLVED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
